@@ -1,0 +1,133 @@
+import gymnasium as gym
+from gymnasium import spaces
+import numpy as np
+import mujoco
+import mujoco.viewer
+import torch.nn as nn
+from stable_baselines3 import PPO
+
+class CartPoleSwingUpEnv(gym.Env):
+    
+    def __init__(self, render_mode="human"):
+        super(CartPoleSwingUpEnv, self).__init__()
+        
+        # 1. Nạp mô hình vật lý
+        self.model = mujoco.MjModel.from_xml_path("cartpole_mujoco/urdf/cartpole_native.xml")
+        self.data = mujoco.MjData(self.model)
+        
+        self.render_mode = render_mode
+        self.viewer = None
+
+        # 2. Không gian hành động: Lực đẩy (Đã giảm xuống 20N để AI không bị "sốc" lực)
+        self.action_space = spaces.Box(low=-20.0, high=20.0, shape=(1,), dtype=np.float32)
+        
+        # 3. Không gian trạng thái
+        high = np.array([5.0, 50.0, 1.0, 1.0, 50.0], dtype=np.float32)
+        self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
+
+        # THÊM MỚI: Giới hạn thời gian (Bom hẹn giờ) để ép đồ thị Rollout hiện lên
+        self.max_steps = 1000 
+        self.current_step = 0 
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        mujoco.mj_resetData(self.model, self.data)
+        
+        # ĐẶT TRẠNG THÁI BAN ĐẦU: Rủ xuống dưới (Góc 0 theo hệ SolidWorks)
+        self.data.qpos[0] = 0.0  
+        self.data.qpos[1] = self.np_random.uniform(-0.1, 0.1) 
+        self.data.qvel[:] = 0.0
+        mujoco.mj_forward(self.model, self.data)
+
+        # THÊM MỚI: Reset lại đồng hồ mỗi khi bắt đầu ván mới
+        self.current_step = 0
+
+        if self.render_mode == "human":
+            self._render_frame()
+
+        return self._get_obs(), {}
+
+    def step(self, action):
+        # Truyền lực vào động cơ
+        self.data.ctrl[0] = action[0]
+        
+        for _ in range(5):
+            mujoco.mj_step(self.model, self.data)
+            
+        obs = self._get_obs()
+        cart_x, cart_vel, cos_th, sin_th, pole_vel = obs
+        
+        # THÊM MỚI: Cập nhật đồng hồ đếm bước
+        self.current_step += 1
+
+        # ==========================================
+        # HÀM CHẤM ĐIỂM (ĐÃ FIX LỖI HỆ QUY CHIẾU & CHỐNG LÁCH LUẬT)
+        # ==========================================
+        # Hướng lên được +1 điểm, rủ xuống bị -1 điểm
+        reward_theta = -cos_th 
+        
+        # SỬA LẠI: Phạt nặng hơn nếu chạy xa trung tâm (tăng từ 0.1 lên 1.0)
+        penalty_x = 1.0 * (cart_x**2)
+        
+        # Phạt nhẹ nếu dùng lực quá lố 
+        penalty_action = 0.001 * (action[0]**2)
+
+        # THÊM MỚI: Đặt "Mìn" ở sát 2 vách (cách vách 0.2 mét)
+        penalty_boundary = 0.0
+        if cart_x > 0.8 or cart_x < -0.8:
+            penalty_boundary = 100.0 # Trừ thẳng 10 điểm nếu bén mảng ra biên!
+        
+        # Cộng trừ tổng điểm
+        reward = float(reward_theta - penalty_x - penalty_action - penalty_boundary)
+        # ==========================================
+        
+        # KẾT THÚC (TERMINATED): Nếu xe chạy quá 1 mét về hai phía thì vỡ ray (Game Over)
+        terminated = bool(cart_x < -1.0 or cart_x > 1.0) 
+
+        # THÊM MỚI: HẾT GIỜ (TRUNCATED) - Ép kết thúc ván nếu sống đủ 1000 bước
+        truncated = bool(self.current_step >= self.max_steps)
+        
+        if self.render_mode == "human":
+            self._render_frame()
+            
+        # SỬA LẠI: Trả về biến truncated thay vì chữ False
+        return obs, reward, terminated, truncated, {}
+
+    def _get_obs(self):
+        """Đọc cảm biến từ MuJoCo"""
+        x = self.data.qpos[0]
+        theta = self.data.qpos[1]
+        v_x = self.data.qvel[0]
+        v_th = self.data.qvel[1]
+        return np.array([x, v_x, np.cos(theta), np.sin(theta), v_th], dtype=np.float32)
+
+    def _render_frame(self):
+        """Chạy cửa sổ 3D ngầm"""
+        if self.viewer is None:
+            self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
+        self.viewer.sync()
+
+    def close(self):
+        if self.viewer is not None:
+            self.viewer.close()
+
+# AI activation
+if __name__ == "__main__":
+    # Gợi ý: Nếu bạn muốn train nhanh để xem đồ thị Rollout sớm, hãy tạm sửa "human" thành "none"
+    env = CartPoleSwingUpEnv(render_mode="human")
+
+    # 128*128 neutral network
+    custom_arch = dict(activation_fn=nn.Tanh, net_arch=dict(pi=[128, 128], vf=[128, 128]))
+
+    # Đặt tên thư mục TensorBoard
+    model = PPO("MlpPolicy", env, verbose=1, 
+                policy_kwargs=custom_arch, 
+                tensorboard_log="./tensorboard/tensorboard_logs/",
+                device="cpu")
+    
+    print("Training begins...")
+    # THÊM MỚI: Đổi tên log để phân biệt phiên bản có luật mới
+    model.learn(total_timesteps=500000, tb_log_name="Fix_Reward_ChongLachLuat")
+    
+    model.save("models/ppo_cartpole_swingup")
+    print("Done and saved!")
