@@ -21,6 +21,6 @@
     </body>
   </worldbody>
   <actuator>
-    <motor joint="cart_prismatic" name="cart_motor" ctrllimited="true" ctrlrange="-20 20"/>
+    <motor joint="cart_prismatic" name="cart_motor" ctrllimited="true" ctrlrange="-30 30"/>
   </actuator>
 </mujoco>
