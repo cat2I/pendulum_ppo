@@ -18,14 +18,14 @@ class CartPoleSwingUpEnv(gym.Env):
         self.render_mode = render_mode
         self.viewer = None
 
-        # 2. Không gian hành động: Lực đẩy (Đã giảm xuống 20N để AI không bị "sốc" lực)
-        self.action_space = spaces.Box(low=-20.0, high=20.0, shape=(1,), dtype=np.float32)
+        # 2. Không gian hành động: Lực đẩy 15N (Đủ để múa lấy đà trong không gian hẹp)
+        self.action_space = spaces.Box(low=-15.0, high=15.0, shape=(1,), dtype=np.float32)
         
         # 3. Không gian trạng thái
         high = np.array([5.0, 50.0, 1.0, 1.0, 50.0], dtype=np.float32)
         self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
 
-        # THÊM MỚI: Giới hạn thời gian (Bom hẹn giờ) để ép đồ thị Rollout hiện lên
+        # 4. Giới hạn thời gian (Bom hẹn giờ) để ép đồ thị Rollout hiện lên
         self.max_steps = 1000 
         self.current_step = 0 
 
@@ -39,7 +39,7 @@ class CartPoleSwingUpEnv(gym.Env):
         self.data.qvel[:] = 0.0
         mujoco.mj_forward(self.model, self.data)
 
-        # THÊM MỚI: Reset lại đồng hồ mỗi khi bắt đầu ván mới
+        # Reset lại đồng hồ mỗi khi bắt đầu ván mới
         self.current_step = 0
 
         if self.render_mode == "human":
@@ -57,40 +57,44 @@ class CartPoleSwingUpEnv(gym.Env):
         obs = self._get_obs()
         cart_x, cart_vel, cos_th, sin_th, pole_vel = obs
         
-        # THÊM MỚI: Cập nhật đồng hồ đếm bước
+        # Cập nhật đồng hồ đếm bước
         self.current_step += 1
 
         # ==========================================
-        # HÀM CHẤM ĐIỂM (ĐÃ FIX LỖI HỆ QUY CHIẾU & CHỐNG LÁCH LUẬT)
+        # HÀM CHẤM ĐIỂM DÀNH RIÊNG CHO RAY DÀI 1 MÉT
         # ==========================================
         # Hướng lên được +1 điểm, rủ xuống bị -1 điểm
         reward_theta = -cos_th 
         
-        # SỬA LẠI: Phạt nặng hơn nếu chạy xa trung tâm (tăng từ 0.1 lên 1.0)
+        # Phạt nặng dần khi chạy xa trung tâm
         penalty_x = 1.0 * (cart_x**2)
         
-        # Phạt nhẹ nếu dùng lực quá lố 
+        # Phạt nhẹ nếu dùng lực quá lố (Ép múa mượt)
         penalty_action = 0.001 * (action[0]**2)
 
-        # THÊM MỚI: Đặt "Mìn" ở sát 2 vách (cách vách 0.2 mét)
+        # BIỂN BÁO: Bắt đầu hãm phanh khi xe vượt qua mốc 0.3m (cách vách 0.15m)
         penalty_boundary = 0.0
-        if cart_x > 0.8 or cart_x < -0.8:
-            penalty_boundary = 100.0 # Trừ thẳng 10 điểm nếu bén mảng ra biên!
+        if cart_x > 0.3 or cart_x < -0.3:
+            # Hệ số 100.0 ép AI quay đầu ngay lập tức vì không gian còn lại rất ngắn
+            penalty_boundary = 100.0 * (abs(cart_x) - 0.3)
         
         # Cộng trừ tổng điểm
         reward = float(reward_theta - penalty_x - penalty_action - penalty_boundary)
         # ==========================================
         
-        # KẾT THÚC (TERMINATED): Nếu xe chạy quá 1 mét về hai phía thì vỡ ray (Game Over)
-        terminated = bool(cart_x < -1.0 or cart_x > 1.0) 
+        # KẾT THÚC (TERMINATED) - Ray 1m -> Nửa ray là 0.5m -> Tâm xe đụng 0.45m là vỡ ray!
+        terminated = bool(cart_x < -0.45 or cart_x > 0.45) 
 
-        # THÊM MỚI: HẾT GIỜ (TRUNCATED) - Ép kết thúc ván nếu sống đủ 1000 bước
+        # ÁN TỬ HÌNH: Trừ 100 điểm nếu dám đâm vách!
+        if terminated:
+            reward -= 100.0
+
+        # HẾT GIỜ (TRUNCATED) - Ép kết thúc ván nếu sống đủ 1000 bước
         truncated = bool(self.current_step >= self.max_steps)
         
         if self.render_mode == "human":
             self._render_frame()
             
-        # SỬA LẠI: Trả về biến truncated thay vì chữ False
         return obs, reward, terminated, truncated, {}
 
     def _get_obs(self):
@@ -113,21 +117,21 @@ class CartPoleSwingUpEnv(gym.Env):
 
 # AI activation
 if __name__ == "__main__":
-    # Gợi ý: Nếu bạn muốn train nhanh để xem đồ thị Rollout sớm, hãy tạm sửa "human" thành "none"
-    env = CartPoleSwingUpEnv(render_mode="human")
+    # Đang để "none" cho chạy train thần tốc. Đổi thành "human" nếu muốn xem nó múa!
+    env = CartPoleSwingUpEnv(render_mode="none")
 
-    # 128*128 neutral network
+    # 128*128 neural network
     custom_arch = dict(activation_fn=nn.Tanh, net_arch=dict(pi=[128, 128], vf=[128, 128]))
 
-    # Đặt tên thư mục TensorBoard
+    # Cấu hình PPO
     model = PPO("MlpPolicy", env, verbose=1, 
                 policy_kwargs=custom_arch, 
                 tensorboard_log="./tensorboard/tensorboard_logs/",
                 device="cpu")
     
     print("Training begins...")
-    # THÊM MỚI: Đổi tên log để phân biệt phiên bản có luật mới
-    model.learn(total_timesteps=500000, tb_log_name="Fix_Reward_ChongLachLuat")
+    # Tên log mới: Fix_Reward_Ray1Met
+    model.learn(total_timesteps=500000, tb_log_name="Fix_Reward_Ray1Met")
     
     model.save("models/ppo_cartpole_swingup")
     print("Done and saved!")
