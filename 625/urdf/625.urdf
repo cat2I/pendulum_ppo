@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="625">
+  <link
+    name="worldframe">
+    <inertial>
+      <origin
+        xyz="-1.38777878078145E-17 0 0"
+        rpy="0 0 0" />
+      <mass
+        value="0.110269902141002" />
+      <inertia
+        ixx="1.98485823853803E-06"
+        ixy="0"
+        ixz="-6.23297226145094E-37"
+        iyy="0.00873643623935175"
+        iyz="0"
+        izz="0.00873643623935175" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://625/meshes/worldframe.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://625/meshes/worldframe.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="cart">
+    <inertial>
+      <origin
+        xyz="0 -0.0115731328196949 1.38777878078145E-17"
+        rpy="0 0 0" />
+      <mass
+        value="0.0591176983883785" />
+      <inertia
+        ixx="2.1955477069531E-05"
+        ixy="-7.02544661956166E-21"
+        ixz="-1.71639977104753E-20"
+        iyy="6.51288177802238E-05"
+        iyz="-1.27862900910289E-21"
+        izz="5.84869244964136E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://625/meshes/cart.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://625/meshes/cart.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="cart_prismatic"
+    type="prismatic">
+    <origin
+      xyz="0 0 0"
+      rpy="-1.5708 0 1.5708" />
+    <parent
+      link="worldframe" />
+    <child
+      link="cart" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-0.45"
+      upper="0.45"
+      effort="150"
+      velocity="10" />
+  </joint>
+  <link
+    name="pole">
+    <inertial>
+      <origin
+        xyz="0.110628550437928 7.64757812993233E-07 0.00747893096278375"
+        rpy="0 0 0" />
+      <mass
+        value="0.0196338198617314" />
+      <inertia
+        ixx="1.18986451079751E-05"
+        ixy="-5.00651553640558E-10"
+        ixz="-2.50233051799663E-05"
+        iyy="0.000197330863226456"
+        iyz="-4.42819475899637E-11"
+        izz="0.000185589544905526" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://625/meshes/pole.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://625/meshes/pole.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="pole_continuous"
+    type="continuous">
+    <origin
+      xyz="0.036 -0.02 0"
+      rpy="1.5708 0 1.5708" />
+    <parent
+      link="cart" />
+    <child
+      link="pole" />
+    <axis
+      xyz="0 0 1" />
+  </joint>
+</robot>

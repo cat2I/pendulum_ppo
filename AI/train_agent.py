@@ -9,12 +9,12 @@ from stable_baselines3 import PPO
 class CartPoleSwingUpEnv(gym.Env):
     def __init__(self, render_mode="none"):
         super(CartPoleSwingUpEnv, self).__init__()
-        self.model = mujoco.MjModel.from_xml_path("cartpole_mujoco/urdf/cartpole_native.xml")
+        self.model = mujoco.MjModel.from_xml_path("625/urdf/mjmodel.xml")
         self.data = mujoco.MjData(self.model)
         self.render_mode = render_mode
         self.viewer = None
-        # Action space: [-30N, 30N]
-        self.action_space = spaces.Box(low=-30.0, high=30.0, shape=(1,), dtype=np.float32)
+        # Action space for stepper motor velocity control
+        self.action_space = spaces.Box(low=-1.5, high=1.5, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(
             low=-np.array([5.0, 50.0, 1.0, 1.0, 50.0], dtype=np.float32), 
             high=np.array([5.0, 50.0, 1.0, 1.0, 50.0], dtype=np.float32), 
@@ -77,13 +77,13 @@ class CartPoleSwingUpEnv(gym.Env):
             self.viewer.close()
 
 if __name__ == "__main__":
-    env = CartPoleSwingUpEnv(render_mode="none")
+    env = CartPoleSwingUpEnv(render_mode="human")
     custom_arch = dict(activation_fn=nn.Tanh, net_arch=dict(pi=[128, 128], vf=[128, 128]))
     model = PPO("MlpPolicy", env, verbose=1, 
                 policy_kwargs=custom_arch, 
                 tensorboard_log="./tensorboard/tensorboard_logs/",
                 device="cpu")
     print("Training begins...")
-    model.learn(total_timesteps=500000, tb_log_name="Fix_Reward_Ray1Met_30N")
-    model.save("models/ppo_cartpole_swingup")
+    model.learn(total_timesteps=2000000, tb_log_name="Fix_Reward_Ray1Met_30N")
+    model.save("models/ppo_cartpole_swingup_hardware")
     print("Done and saved!")

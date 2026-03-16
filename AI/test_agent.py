@@ -6,7 +6,7 @@ def main():
     env = CartPoleSwingUpEnv(render_mode="human")
 
     print("Loading pre-trained model...")
-    model = PPO.load("models/ppo_cartpole_swingup.zip", env=env)
+    model = PPO.load("models/ppo_cartpole_swingup_hardware.zip", env=env)
 
     obs, info = env.reset()
     print("Start testing... Press Ctrl+C in terminal to stop.")
