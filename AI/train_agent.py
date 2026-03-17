@@ -43,14 +43,25 @@ class CartPoleSwingUpEnv(gym.Env):
         cart_x, cart_vel, cos_th, sin_th, pole_vel = obs
         self.current_step += 1
         # Rewards and penalties
-        reward_theta = -cos_th 
-        penalty_x = 1.0 * (cart_x**2)
+        #1. Phan thuong tinh tien (luon >= 0)
+        reward_theta = 1.0-cos_th 
+        balance_bonus = 0.0
+        penalty_pole_vel = 0.0
+        penalty_cart_vel = 0.0
+        #2. Pheu doc & Phanh gat ( kich hoat khi nghieng <25 do)
+        if cos_th < -0.9: 
+            # Diem dao dong tu 20 den 30 tuy do thang dung
+            balance_bonus = 20.0 + 100.0*(-cos_th + 0.9)
+            penalty_pole_vel = 0.1 * (pole_vel**2)
+            penalty_cart_vel = 0.5 * (cart_vel**2)
+        #3. Phat hanh vi co ban (Noi long de AI de tho)
+        penalty_x = 0.5 * (cart_x**2)
         penalty_action = 0.001 * (action[0]**2)
         penalty_boundary = 0.0
         # Soft boundary penalty (> 0.3m)
         if cart_x > 0.3 or cart_x < -0.3:
             penalty_boundary = 100.0 * (abs(cart_x) - 0.3)
-        reward = float(reward_theta - penalty_x - penalty_action - penalty_boundary)
+        reward = float(reward_theta + balance_bonus - penalty_pole_vel - penalty_cart_vel- penalty_x - penalty_action - penalty_boundary)
         # Hard termination (0.45m limit)
         terminated = bool(cart_x < -0.45 or cart_x > 0.45) 
         if terminated:
@@ -77,7 +88,7 @@ class CartPoleSwingUpEnv(gym.Env):
             self.viewer.close()
 
 if __name__ == "__main__":
-    env = CartPoleSwingUpEnv(render_mode="human")
+    env = CartPoleSwingUpEnv(render_mode="none")
     custom_arch = dict(activation_fn=nn.Tanh, net_arch=dict(pi=[128, 128], vf=[128, 128]))
     model = PPO("MlpPolicy", env, verbose=1, 
                 policy_kwargs=custom_arch, 
