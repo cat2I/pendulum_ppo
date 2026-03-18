@@ -44,30 +44,33 @@ class CartPoleSwingUpEnv(gym.Env):
         self.current_step += 1
         # Rewards and penalties
         #1. Phan thuong tinh tien (luon >= 0)
-        reward_theta = 1.0-cos_th 
-        balance_bonus = 0.0
-        penalty_pole_vel = 0.0
-        penalty_cart_vel = 0.0
+        reward_theta = 1.0 - cos_th 
+        #reward_theta = -cos_th 
+        # balance_bonus = 0.0
+        # penalty_pole_vel = 0.0
+        # penalty_cart_vel = 0.0
         #2. Pheu doc & Phanh gat ( kich hoat khi nghieng <25 do)
-        if cos_th < -0.9: 
-            # Diem dao dong tu 20 den 30 tuy do thang dung
-            balance_bonus = 20.0 + 100.0*(-cos_th - 0.9)
-            penalty_pole_vel = 1.0 * (pole_vel**2)
-            penalty_cart_vel = 0.5 * (cart_vel**2)
+        # if cos_th < -0.9: 
+            #Diem dao dong tu 20 den 30 tuy do thang dung
+            # balance_bonus = 20.0 + 100.0*(-cos_th - 0.9)
+            # penalty_pole_vel = 1.0 * (pole_vel**2)
+            # penalty_cart_vel = 0.5 * (cart_vel**2)
         #3. Phat hanh vi co ban (Noi long de AI de tho)
-        penalty_x = 0.5 * (cart_x**2)
-        #penalty_action = 0.001 * (action[0]**2)
-        if cos_th < -0.85: # Smart Action Penalty (Phạt thông minh) 
-            # 1. Khi con lắc đang ở trên đỉnh (Vùng thăng bằng)
-            penalty_action = 0.005 * (action[0]**2) #Phạt NẶNG hành động để ép AI phải rà động cơ thật mượt, tránh giật cục
-        else:
-            # 2. Khi con lắc ở nửa dưới (Vùng cần lấy đà)
-            penalty_action = 0.0001 * (action[0]**2) #Phạt NHẸ để cho phép AI bung tối đa sức mạnh NEMA 23 hất con lắc lên
+        penalty_x = 0.1 * (cart_x**2)
+        penalty_action = 0.1 * (action[0]**2)
         penalty_boundary = 0.0
+        # if cos_th < -0.85: # Action Penalty  
+        #     # 1. Khi con lắc đang ở trên đỉnh (Vùng thăng bằng)
+        #     penalty_action = 0.005 * (action[0]**2) #Phạt NẶNG hành động để ép AI phải rà động cơ thật mượt, tránh giật cục
+        # else:
+        #     # 2. Khi con lắc ở nửa dưới (Vùng cần lấy đà)
+        #     penalty_action = 0.0001 * (action[0]**2) #Phạt NHẸ để cho phép AI bung tối đa sức mạnh NEMA 23 hất con lắc lên
+        # penalty_boundary = 0.0
         # Soft boundary penalty (> 0.3m)
-        if cart_x > 0.3 or cart_x < -0.3:
-            penalty_boundary = 100.0 * (abs(cart_x) - 0.3)
-        reward = float(reward_theta + balance_bonus - penalty_pole_vel - penalty_cart_vel- penalty_x - penalty_action - penalty_boundary)
+        if cart_x > 0.35 or cart_x < -0.35:
+            penalty_boundary = 10.0 * (abs(cart_x) - 0.35)
+        reward = float(reward_theta - penalty_x - penalty_action - penalty_boundary)
+        #reward = float(reward_theta + balance_bonus - penalty_pole_vel - penalty_cart_vel- penalty_x - penalty_action - penalty_boundary)
         # Hard termination (0.45m limit)
         terminated = bool(cart_x < -0.45 or cart_x > 0.45) 
         if terminated:
