@@ -51,12 +51,18 @@ class CartPoleSwingUpEnv(gym.Env):
         #2. Pheu doc & Phanh gat ( kich hoat khi nghieng <25 do)
         if cos_th < -0.9: 
             # Diem dao dong tu 20 den 30 tuy do thang dung
-            balance_bonus = 20.0 + 100.0*(-cos_th + 0.9)
-            penalty_pole_vel = 0.1 * (pole_vel**2)
+            balance_bonus = 20.0 + 100.0*(-cos_th - 0.9)
+            penalty_pole_vel = 1.0 * (pole_vel**2)
             penalty_cart_vel = 0.5 * (cart_vel**2)
         #3. Phat hanh vi co ban (Noi long de AI de tho)
         penalty_x = 0.5 * (cart_x**2)
-        penalty_action = 0.001 * (action[0]**2)
+        #penalty_action = 0.001 * (action[0]**2)
+        if cos_th < -0.85: # Smart Action Penalty (Phạt thông minh) 
+            # 1. Khi con lắc đang ở trên đỉnh (Vùng thăng bằng)
+            penalty_action = 0.005 * (action[0]**2) #Phạt NẶNG hành động để ép AI phải rà động cơ thật mượt, tránh giật cục
+        else:
+            # 2. Khi con lắc ở nửa dưới (Vùng cần lấy đà)
+            penalty_action = 0.0001 * (action[0]**2) #Phạt NHẸ để cho phép AI bung tối đa sức mạnh NEMA 23 hất con lắc lên
         penalty_boundary = 0.0
         # Soft boundary penalty (> 0.3m)
         if cart_x > 0.3 or cart_x < -0.3:
