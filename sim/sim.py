@@ -8,7 +8,7 @@ def main():
 
     print("Loading pre-trained model...")
     # Load legacy AI brain
-    model = PPO.load("models/ppo_cartpole_swingup.zip", env=env)
+    model = PPO.load("sim/ppo_cartpole_swingup.zip", env=env)
 
     obs, info = env.reset()
     print("Start testing... Press Ctrl+C in terminal to stop.")

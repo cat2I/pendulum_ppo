@@ -13,7 +13,7 @@ class CartPoleSwingUpEnv(gym.Env):
         self.data = mujoco.MjData(self.model)
         self.render_mode = render_mode
         self.viewer = None
-        # Action space for stepper motor velocity control
+        
         self.action_space = spaces.Box(low=-1.5, high=1.5, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(
             low=-np.array([5.0, 50.0, 1.0, 1.0, 50.0], dtype=np.float32), 
@@ -31,53 +31,75 @@ class CartPoleSwingUpEnv(gym.Env):
         self.data.qvel[:] = 0.0
         mujoco.mj_forward(self.model, self.data)
         self.current_step = 0
+        
+        # flag: track if agent successfully swung up
+        self.has_reached_top = False 
+        
         if self.render_mode == "human":
             self._render_frame()
         return self._get_obs(), {}
-
+    
     def step(self, action):
         self.data.ctrl[0] = action[0]
         for _ in range(5):
             mujoco.mj_step(self.model, self.data)
+            
         obs = self._get_obs()
         cart_x, cart_vel, cos_th, sin_th, pole_vel = obs
         self.current_step += 1
-        # Rewards and penalties
-        #1. Phan thuong tinh tien (luon >= 0)
-        reward_theta = 1.0 - cos_th 
-        #reward_theta = -cos_th 
-        # balance_bonus = 0.0
-        # penalty_pole_vel = 0.0
-        # penalty_cart_vel = 0.0
-        #2. Pheu doc & Phanh gat ( kich hoat khi nghieng <25 do)
-        # if cos_th < -0.9: 
-            #Diem dao dong tu 20 den 30 tuy do thang dung
-            # balance_bonus = 20.0 + 100.0*(-cos_th - 0.9)
-            # penalty_pole_vel = 1.0 * (pole_vel**2)
-            # penalty_cart_vel = 0.5 * (cart_vel**2)
-        #3. Phat hanh vi co ban (Noi long de AI de tho)
-        penalty_x = 0.1 * (cart_x**2)
-        penalty_action = 0.1 * (action[0]**2)
+        
+        if not hasattr(self, "previous_action"):
+            self.previous_action = action[0]
+
+        # base theta reward
+        reward_theta = 1.0 - cos_th
+        
+        # spatial constraint: free swing-up, soft boundary penalty
+        penalty_x = 0.0 
         penalty_boundary = 0.0
-        # if cos_th < -0.85: # Action Penalty  
-        #     # 1. Khi con lắc đang ở trên đỉnh (Vùng thăng bằng)
-        #     penalty_action = 0.005 * (action[0]**2) #Phạt NẶNG hành động để ép AI phải rà động cơ thật mượt, tránh giật cục
-        # else:
-        #     # 2. Khi con lắc ở nửa dưới (Vùng cần lấy đà)
-        #     penalty_action = 0.0001 * (action[0]**2) #Phạt NHẸ để cho phép AI bung tối đa sức mạnh NEMA 23 hất con lắc lên
-        # penalty_boundary = 0.0
-        # Soft boundary penalty (> 0.3m)
         if cart_x > 0.35 or cart_x < -0.35:
-            penalty_boundary = 10.0 * (abs(cart_x) - 0.35)
-        reward = float(reward_theta - penalty_x - penalty_action - penalty_boundary)
-        #reward = float(reward_theta + balance_bonus - penalty_pole_vel - penalty_cart_vel- penalty_x - penalty_action - penalty_boundary)
-        # Hard termination (0.45m limit)
+            penalty_boundary = 50.0 * (abs(cart_x) - 0.35)
+
+        # jerk calc
+        action_delta = abs(action[0] - self.previous_action)
+
+        balance_bonus = 0.0
+        penalty_action = 0.0
+        penalty_smoothness = 0.0
+        penalty_cart_vel = 0.0
+        penalty_pole_vel = 0.0
+        drop_penalty = 0.0 
+
+        # state-machine: milestone check
+        if cos_th < -0.9:
+            self.has_reached_top = True
+
+        # state-machine: split logic top vs bottom
+        if cos_th < -0.7: 
+            # top phase: massive reward, strict stabilization
+            balance_bonus = 30.0 
+            penalty_action = 0.5 * (action[0]**2)
+            penalty_cart_vel = 1.0 * (cart_vel**2)
+            penalty_pole_vel = 1.0 * (pole_vel**2)
+            penalty_smoothness = 1.0 * action_delta
+        else:
+            # bottom phase: absolute freedom, massive drop penalty
+            penalty_action = 0.0
+            if getattr(self, "has_reached_top", False):
+                drop_penalty = 50.0
+
+        reward = float(reward_theta + balance_bonus - penalty_x - penalty_boundary - penalty_action - penalty_smoothness - penalty_cart_vel - penalty_pole_vel - drop_penalty)
+        self.previous_action = action[0]
+
+        # termination: physical limit
         terminated = bool(cart_x < -0.45 or cart_x > 0.45) 
         if terminated:
             reward -= 100.0
+            
         truncated = bool(self.current_step >= self.max_steps)
         if self.render_mode == "human":
             self._render_frame()
+            
         return obs, reward, terminated, truncated, {}
 
     def _get_obs(self):
@@ -100,6 +122,9 @@ if __name__ == "__main__":
     env = CartPoleSwingUpEnv(render_mode="none")
     custom_arch = dict(activation_fn=nn.Tanh, net_arch=dict(pi=[128, 128], vf=[128, 128]))
     model = PPO("MlpPolicy", env, verbose=1, 
+                learning_rate=1e-4,
+                gamma=0.999,
+                clip_range=0.1,
                 policy_kwargs=custom_arch, 
                 tensorboard_log="./tensorboard/tensorboard_logs/",
                 device="cpu")
