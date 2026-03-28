@@ -1,7 +1,7 @@
 from stable_baselines3 import PPO
 import time
 # Import isolated legacy environment
-from old_env import OldCartPoleEnv
+from sim.ppo_cartpole_swingup.old_env import OldCartPoleEnv
 
 def main():
     env = OldCartPoleEnv(render_mode="human")

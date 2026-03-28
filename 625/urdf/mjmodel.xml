@@ -11,7 +11,7 @@
     <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" mesh="worldframe"/>
     <body name="cart" quat="0.499998 -0.5 -0.500002 0.5">
       <inertial pos="0 -0.0115731 0" quat="0.5 0.5 0.5 0.5" mass="0.0591177" diaginertia="6.51288e-05 5.84869e-05 2.19555e-05"/>
-      <joint name="cart_prismatic" pos="0 0 0" axis="0 0 1" type="slide" range="-0.45 0.45" damping="0.001"/>
+      <joint name="cart_prismatic" pos="0 0 0" axis="0 0 -1" type="slide" range="-0.45 0.45" damping="0.001" armature="0.12"/>
       <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" contype="0" conaffinity="0" mesh="cart"/>
       <body name="pole" pos="0.036 -0.02 0" quat="0.499998 0.5 0.500002 0.5">
         <inertial pos="0.110629 7.64758e-07 0.00747893" quat="0.533808 0.463732 0.463732 0.533811" mass="0.0196338" diaginertia="0.000197331 0.000189123 8.36546e-06"/>
@@ -21,6 +21,6 @@
     </body>
   </worldbody>
   <actuator>
-    <velocity joint="cart_prismatic" name="stepper_vel" ctrllimited="true" ctrlrange="-1.5 1.5" kv="500" forcelimited="true" forcerange="-75 75"/>
+    <velocity joint="cart_prismatic" name="stepper_vel" ctrllimited="true" ctrlrange="-1.0 1.0" kv="500" forcelimited="true" forcerange="-75 75"/>
 </actuator>
 </mujoco>

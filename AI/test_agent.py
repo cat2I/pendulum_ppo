@@ -1,15 +1,19 @@
 from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
 import time
 from train_agent import CartPoleSwingUpEnv
 
 def main():
     env = CartPoleSwingUpEnv(render_mode="human")
-    env.unwrapped.max_steps = 5000
+    # 2. Bọc môi trường để tương thích với SB3 vectorization
+    vec_env = DummyVecEnv([lambda: env])
+    # 3. Kích hoạt Frame Stacking (Lưu lịch sử 8 frames)
+    vec_env = VecFrameStack(vec_env, n_stack=8)
 
     print("Loading pre-trained model...")
-    model = PPO.load("models/ppo_cartpole_swingup_hardware.zip", env=env)
+    model = PPO.load("models/ppo_stepper_vel.zip", env=vec_env)
 
-    obs, info = env.reset()
+    obs = vec_env.reset()
     print("Start testing... Press Ctrl+C in terminal to stop.")
 
     try:
@@ -17,23 +21,19 @@ def main():
         while True:
             action, _states = model.predict(obs, deterministic=True)
             
-            obs, reward, terminated, truncated, info = env.step(action)
+            obs, reward, dones, info = vec_env.step(action)
             
-            if hasattr(env, '_render_frame'):
-                env._render_frame()
-                
             time.sleep(0.01) 
 
             # Auto-reset on crash or timeout, but keeps window open
-            if terminated or truncated:
+            if dones[0]:
                 print("Episode finished. Restarting...")
                 time.sleep(1)
-                obs, info = env.reset()
                 
     except KeyboardInterrupt:
         print("Stopped by user.")
     finally:
-        env.close()
+        vec_env.close()
 
 if __name__ == "__main__":
     main()

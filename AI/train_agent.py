@@ -5,6 +5,7 @@ import mujoco
 import mujoco.viewer
 import torch.nn as nn
 from stable_baselines3 import PPO
+from stable_baselines3.common.monitor import Monitor
 
 class CartPoleSwingUpEnv(gym.Env):
     def __init__(self, render_mode="none"):
@@ -13,8 +14,8 @@ class CartPoleSwingUpEnv(gym.Env):
         self.data = mujoco.MjData(self.model)
         self.render_mode = render_mode
         self.viewer = None
-        
-        self.action_space = spaces.Box(low=-1.5, high=1.5, shape=(1,), dtype=np.float32)
+        self.prev_action = 0.0 # Init tracking for action smoothing
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(
             low=-np.array([5.0, 50.0, 1.0, 1.0, 50.0], dtype=np.float32), 
             high=np.array([5.0, 50.0, 1.0, 1.0, 50.0], dtype=np.float32), 
@@ -31,75 +32,56 @@ class CartPoleSwingUpEnv(gym.Env):
         self.data.qvel[:] = 0.0
         mujoco.mj_forward(self.model, self.data)
         self.current_step = 0
-        
-        # flag: track if agent successfully swung up
-        self.has_reached_top = False 
-        
+        self.prev_action = 0.0 # Clear history on new episode
         if self.render_mode == "human":
             self._render_frame()
         return self._get_obs(), {}
-    
+
     def step(self, action):
-        self.data.ctrl[0] = action[0]
-        for _ in range(5):
-            mujoco.mj_step(self.model, self.data)
-            
+        target_vel = action[0] * 1.0
+        self.data.ctrl[0] = target_vel
+        for _ in range(10):
+            mujoco.mj_step(self.model, self.data)    
         obs = self._get_obs()
         cart_x, cart_vel, cos_th, sin_th, pole_vel = obs
         self.current_step += 1
-        
-        if not hasattr(self, "previous_action"):
-            self.previous_action = action[0]
 
-        # base theta reward
         reward_theta = 1.0 - cos_th
-        
-        # spatial constraint: free swing-up, soft boundary penalty
-        penalty_x = 0.0 
-        penalty_boundary = 0.0
-        if cart_x > 0.35 or cart_x < -0.35:
-            penalty_boundary = 50.0 * (abs(cart_x) - 0.35)
+        action_diff = action[0] - self.prev_action
 
-        # jerk calc
-        action_delta = abs(action[0] - self.previous_action)
-
-        balance_bonus = 0.0
-        penalty_action = 0.0
-        penalty_smoothness = 0.0
-        penalty_cart_vel = 0.0
-        penalty_pole_vel = 0.0
-        drop_penalty = 0.0 
-
-        # state-machine: milestone check
-        if cos_th < -0.9:
-            self.has_reached_top = True
-
-        # state-machine: split logic top vs bottom
-        if cos_th < -0.7: 
-            # top phase: massive reward, strict stabilization
-            balance_bonus = 30.0 
-            penalty_action = 0.5 * (action[0]**2)
-            penalty_cart_vel = 1.0 * (cart_vel**2)
-            penalty_pole_vel = 1.0 * (pole_vel**2)
-            penalty_smoothness = 1.0 * action_delta
+        if cos_th < -0.8: 
+            balance_bonus = 10.0 + 20.0 * (-cos_th - 0.8)
+            penalty_pole_vel = 2.0 * (pole_vel**2)
+            penalty_action = 0.0 
+            penalty_action_rate = 0.05 * (action_diff**2)
+            penalty_x = 0.5 * (cart_x**2)
+            swing_up_bonus = 0.0 
         else:
-            # bottom phase: absolute freedom, massive drop penalty
+            balance_bonus = 0.0
+            penalty_pole_vel = 0.0
             penalty_action = 0.0
-            if getattr(self, "has_reached_top", False):
-                drop_penalty = 50.0
+            penalty_action_rate = 0.0  
 
-        reward = float(reward_theta + balance_bonus - penalty_x - penalty_boundary - penalty_action - penalty_smoothness - penalty_cart_vel - penalty_pole_vel - drop_penalty)
-        self.previous_action = action[0]
+            if abs(cart_x) < 0.3: 
+                penalty_x = 0.0
+            else:
+                penalty_x = 50.0 * (abs(cart_x) - 0.3)**2
 
-        # termination: physical limit
-        terminated = bool(cart_x < -0.45 or cart_x > 0.45) 
+            swing_up_bonus = 0.5 * abs(cart_vel)
+
+        self.prev_action = action[0] 
+
+        reward = float(reward_theta + swing_up_bonus + balance_bonus - penalty_pole_vel - penalty_x - penalty_action - penalty_action_rate)
+
+        terminated = bool(abs(cart_x) > 0.44) 
         if terminated:
-            reward -= 100.0
-            
+            reward -= 20.0
+
         truncated = bool(self.current_step >= self.max_steps)
+
         if self.render_mode == "human":
             self._render_frame()
-            
+
         return obs, reward, terminated, truncated, {}
 
     def _get_obs(self):
@@ -118,17 +100,30 @@ class CartPoleSwingUpEnv(gym.Env):
         if self.viewer is not None:
             self.viewer.close()
 
+from typing import Callable
+
+# Linear schedule: progress from 1.0 to 0.0 (LR schedule)
+def linear_schedule(initial_value: float) -> Callable[[float], float]:
+    def func(progress_remaining: float) -> float:
+        return progress_remaining * initial_value
+    return func
 if __name__ == "__main__":
+    from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
     env = CartPoleSwingUpEnv(render_mode="none")
+    env = Monitor(env)
+    # 2. Bọc môi trường để tương thích với SB3 vectorization
+    vec_env = DummyVecEnv([lambda: env])
+    # 3. Kích hoạt Frame Stacking (Lưu lịch sử 8 frames)
+    # Lưu ý: Lúc này Observation Space của bạn sẽ tự động tăng lên gấp 8 lần (5 x 8 = 40 chiều)
+    vec_env = VecFrameStack(vec_env, n_stack=8)
     custom_arch = dict(activation_fn=nn.Tanh, net_arch=dict(pi=[128, 128], vf=[128, 128]))
-    model = PPO("MlpPolicy", env, verbose=1, 
-                learning_rate=1e-4,
-                gamma=0.999,
-                clip_range=0.1,
+    model = PPO("MlpPolicy", vec_env, verbose=1,
+                learning_rate=linear_schedule(3e-4), # LR decay
+                target_kl=0.015, # KL constraint: early stop policy update (target_kl)
                 policy_kwargs=custom_arch, 
                 tensorboard_log="./tensorboard/tensorboard_logs/",
                 device="cpu")
     print("Training begins...")
-    model.learn(total_timesteps=2000000, tb_log_name="Fix_Reward_Ray1Met_30N")
-    model.save("models/ppo_cartpole_swingup_hardware")
-    print("Done and saved!")
+    model.learn(total_timesteps=500000, tb_log_name="ppo_stepper_vel")
+    model.save("models/ppo_stepper_vel")
+    print("Done!")

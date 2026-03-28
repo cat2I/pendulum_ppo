@@ -1,7 +1,7 @@
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
 import time
-from retake_tensor import CartPoleSwingUpEnv
+from force_agent import CartPoleSwingUpEnv
 
 def main():
     env = CartPoleSwingUpEnv(render_mode="human")
@@ -19,7 +19,7 @@ def main():
     try:
         # Infinite loop: Runs until user presses Ctrl+C
         while True:
-            action, _states = model.predict(obs, deterministic=False)
+            action, _states = model.predict(obs, deterministic=True)
             
             obs, reward, dones, info = vec_env.step(action)
             
