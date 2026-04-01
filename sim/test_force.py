@@ -11,7 +11,7 @@ def main():
     vec_env = VecFrameStack(vec_env, n_stack=8)
 
     print("Loading pre-trained model...")
-    model = PPO.load("models/ppo_vel_control.zip", env=vec_env)
+    model = PPO.load("models/ppo_force_sim.zip", env=vec_env)
 
     obs = vec_env.reset()
     print("Start testing... Press Ctrl+C in terminal to stop.")

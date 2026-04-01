@@ -14,8 +14,10 @@ class CartPoleSwingUpEnv(gym.Env):
         self.data = mujoco.MjData(self.model)
         self.render_mode = render_mode
         self.viewer = None
+        self.current_step = 0 
         self.prev_action = 0.0 # Init tracking for action smoothing
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
+        # Action space: [-30N, 30N]
+        self.action_space = spaces.Box(low=-30.0, high=30.0, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(
             low=-np.array([5.0, 50.0, 1.0, 1.0, 50.0], dtype=np.float32), 
             high=np.array([5.0, 50.0, 1.0, 1.0, 50.0], dtype=np.float32), 
@@ -32,56 +34,44 @@ class CartPoleSwingUpEnv(gym.Env):
         self.data.qvel[:] = 0.0
         mujoco.mj_forward(self.model, self.data)
         self.current_step = 0
-        self.prev_action = 0.0 # Clear history on new episode
         if self.render_mode == "human":
             self._render_frame()
+            self.current_step = 0
+            self.prev_action = 0.0 # Clear history on new episode
         return self._get_obs(), {}
 
     def step(self, action):
-        target_vel = action[0] * 1.0
-        self.data.ctrl[0] = target_vel
-        for _ in range(10):
-            mujoco.mj_step(self.model, self.data)    
+        self.data.ctrl[0] = action[0]
+        for _ in range(5):
+            mujoco.mj_step(self.model, self.data)
         obs = self._get_obs()
         cart_x, cart_vel, cos_th, sin_th, pole_vel = obs
         self.current_step += 1
-
-        reward_theta = 1.0 - cos_th
+        # Rewards and penalties
+        reward_theta = 1.0-cos_th 
+        # Penalties: softer scaling, prevent gradient spike
+        penalty_x = 1.0 * (cart_x**2)
+        penalty_action = 0.001 * (action[0]**2)
+        # Action rate penalty: limit high-frequency changes (chattering)
         action_diff = action[0] - self.prev_action
-
-        if cos_th < -0.8: 
-            balance_bonus = 10.0 + 20.0 * (-cos_th - 0.8)
-            penalty_pole_vel = 2.0 * (pole_vel**2)
-            penalty_action = 0.0 
-            penalty_action_rate = 0.05 * (action_diff**2)
-            penalty_x = 0.5 * (cart_x**2)
-            swing_up_bonus = 0.0 
-        else:
-            balance_bonus = 0.0
-            penalty_pole_vel = 0.0
-            penalty_action = 0.0
-            penalty_action_rate = 0.0  
-
-            if abs(cart_x) < 0.3: 
-                penalty_x = 0.0
-            else:
-                penalty_x = 50.0 * (abs(cart_x) - 0.3)**2
-
-            swing_up_bonus = 0.5 * abs(cart_vel)
-
-        self.prev_action = action[0] 
-
-        reward = float(reward_theta + swing_up_bonus + balance_bonus - penalty_pole_vel - penalty_x - penalty_action - penalty_action_rate)
-
+        penalty_action_rate = 0.05 * (action_diff**2) 
+        self.prev_action = action[0] # Update for next step
+        # Velocity penalty: prevent reward hacking (swing-up by dropping)
+        penalty_vx = 0.05 * (cart_vel**2)
+        penalty_vth = 0.005 * (pole_vel**2)
+        penalty_boundary = 0.0
+        # Soft boundary penalty (> 0.3m)
+        if abs(cart_x) > 0.3:
+            penalty_boundary = 10.0 * (abs(cart_x) - 0.3) #soft penalty
+        # Total reward calculation
+        reward = float(reward_theta - penalty_x - penalty_action - penalty_action_rate - penalty_boundary - penalty_vx - penalty_vth)
+        # Hard termination (0.44m limit)
         terminated = bool(abs(cart_x) > 0.44) 
         if terminated:
-            reward -= 20.0
-
+            reward -= 5.0 # Hard penalty: reduced from 100 to avoid reward cliff
         truncated = bool(self.current_step >= self.max_steps)
-
         if self.render_mode == "human":
             self._render_frame()
-
         return obs, reward, terminated, truncated, {}
 
     def _get_obs(self):
@@ -124,6 +114,6 @@ if __name__ == "__main__":
                 tensorboard_log="./tensorboard/tensorboard_logs/",
                 device="cpu")
     print("Training begins...")
-    model.learn(total_timesteps=500000, tb_log_name="ppo_stepper_vel")
-    model.save("models/ppo_stepper_vel")
+    model.learn(total_timesteps=500000, tb_log_name="ppo_force_real")
+    model.save("models/ppo_force_real")
     print("Done!")

@@ -114,6 +114,6 @@ if __name__ == "__main__":
                 tensorboard_log="./tensorboard/tensorboard_logs/",
                 device="cpu")
     print("Training begins...")
-    model.learn(total_timesteps=500000, tb_log_name="ppo_vel_control")
-    model.save("models/ppo_vel_control")
+    model.learn(total_timesteps=500000, tb_log_name="ppo_force_sim")
+    model.save("models/ppo_force_sim")
     print("Done!")
