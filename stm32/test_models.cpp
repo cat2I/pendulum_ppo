@@ -37,7 +37,7 @@ int main() {
     // [vị trí x, vận tốc x, góc nghiêng, vận tốc góc, lực cũ]
     float test_state[5] = {0.0f, 0.0f, 0.1f, 0.0f, 0.0f};
 
-    std::cout << "Dang tinh toan..." << std::endl;
+    std::cout << "Computing..." << std::endl;
 
     // 2. Bắt đầu bấm giờ
     auto start = std::chrono::high_resolution_clock::now();
@@ -49,9 +49,9 @@ int main() {
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float, std::micro> duration = end - start;
 
-    std::cout << "--- KET QUA TEST C++ ---" << std::endl;
-    std::cout << "Action (Luc Force) can thuc hien: " << force_output << std::endl;
-    std::cout << "Thoi gian chay cua mang No-ron: " << duration.count() << " micro-giay" << std::endl;
+    std::cout << "Test result: " << std::endl;
+    std::cout << "Action (Force) needs to be delivered: " << force_output << std::endl;
+    std::cout << "Neural runtime " << duration.count() << " micro-giay" << std::endl;
 
     return 0;
 }
