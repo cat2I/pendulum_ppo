@@ -169,7 +169,7 @@ if __name__ == "__main__":
     # Frame stack after normalization (history of 8 frames)
     vec_env = VecFrameStack(vec_norm, n_stack=8)
     custom_arch = dict(activation_fn=nn.Tanh, net_arch=dict(pi=[128, 128], vf=[128, 128]))
-    model = PPO("MlpPolicy", vec_env, verbose=0,
+    model = PPO("MlpPolicy", vec_env, verbose=1,
                 learning_rate=linear_schedule(3e-4), # LR decay
                 target_kl=0.015, # KL constraint: early stop policy update (target_kl)
                 policy_kwargs=custom_arch, 

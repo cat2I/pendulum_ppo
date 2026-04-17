@@ -1,0 +1,48 @@
+diff --git a/AI/__pycache__/train_agent.cpython-312.pyc b/AI/__pycache__/train_agent.cpython-312.pyc
+index f38c8e2..93b630e 100644
+Binary files a/AI/__pycache__/train_agent.cpython-312.pyc and b/AI/__pycache__/train_agent.cpython-312.pyc differ
+diff --git a/AI/train_agent.py b/AI/train_agent.py
+index 12028e9..485010d 100644
+--- a/AI/train_agent.py
++++ b/AI/train_agent.py
+@@ -6,6 +6,8 @@ import mujoco.viewer
+ import torch.nn as nn
+ from stable_baselines3 import PPO
+ from stable_baselines3.common.monitor import Monitor
++import wandb
++from wandb.integration.sb3 import WandbCallback
+ 
+ class CartPoleSwingUpEnv(gym.Env):
+     def __init__(self, render_mode="none"):
+@@ -146,6 +148,19 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
+         return progress_remaining * initial_value
+     return func
+ if __name__ == "__main__":
++    # 1. WandB
++    run = wandb.init(
++        project="CartPole-Mujoco-Lab",
++        config={
++            "total_timesteps": 500000,
++            "learning_rate": 3e-4,
++            "architecture": "128x128",
++        },
++        sync_tensorboard=True,  # data from Tensorboard 
++        monitor_gym=False,       # Video
++        save_code=True,         # Code version storing
++    )
++
+     from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecNormalize
+     # Create a fresh Monitor-wrapped env per worker to avoid reusing the same instance
+     vec_env = DummyVecEnv([lambda: Monitor(CartPoleSwingUpEnv(render_mode="none"))])
+@@ -161,8 +176,9 @@ if __name__ == "__main__":
+                 tensorboard_log="./tensorboard/tensorboard_logs/",
+                 device="cpu")
+     print("Training begins...")
+-    model.learn(total_timesteps=500000, tb_log_name="ppo_force_real")
++    model.learn(total_timesteps=500000, tb_log_name="ppo_force_real", callback=WandbCallback())
+     model.save("models/ppo_force_real")
+     # Save VecNormalize statistics
+     vec_norm.save("vec/vec_normalize.pkl")
++    run.finish() #for wandb
+     print("Done!")
+\ No newline at end of file

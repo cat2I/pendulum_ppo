@@ -1,0 +1,36 @@
+2026-04-17 16:03:24 ERROR Traceback (most recent call last):
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/cli/cli.py", line 150, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/cli/cli.py", line 371, in login
+    wandb.login(
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/sdk/wandb_login.py", line 101, in login
+    logged_in, _ = _login(
+                   ^^^^^^^
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/sdk/wandb_login.py", line 182, in _login
+    auth: wbauth.Auth | None = _use_explicit_key(
+                               ^^^^^^^^^^^^^^^^^^
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/sdk/wandb_login.py", line 234, in _use_explicit_key
+    auth = wbauth.AuthApiKey(host=host, api_key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/sdk/lib/wbauth/auth.py", line 83, in __init__
+    raise AuthenticationError(problems)
+wandb.errors.errors.AuthenticationError: API key must have 40+ characters, has 7.
+Traceback (most recent call last):
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/cli/cli.py", line 150, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/cli/cli.py", line 371, in login
+    wandb.login(
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/sdk/wandb_login.py", line 101, in login
+    logged_in, _ = _login(
+                   ^^^^^^^
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/sdk/wandb_login.py", line 182, in _login
+    auth: wbauth.Auth | None = _use_explicit_key(
+                               ^^^^^^^^^^^^^^^^^^
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/sdk/wandb_login.py", line 234, in _use_explicit_key
+    auth = wbauth.AuthApiKey(host=host, api_key=key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/cat21/mujoco_env/lib/python3.12/site-packages/wandb/sdk/lib/wbauth/auth.py", line 83, in __init__
+    raise AuthenticationError(problems)
+wandb.errors.errors.AuthenticationError: API key must have 40+ characters, has 7.
