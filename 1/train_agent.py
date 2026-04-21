@@ -14,7 +14,7 @@ class CartPoleSwingUpEnv(gym.Env):
     def __init__(self, render_mode="none"):
         super(CartPoleSwingUpEnv, self).__init__()
         
-        self.model = mujoco.MjModel.from_xml_path("625/urdf/mjmodel.xml") #CPU
+        self.model = mujoco.MjModel.from_xml_path("m.625/urdf/mjmodel.xml") #CPU
         self.data = mujoco.MjData(self.model) 
 
         #self.mjx_model = mjx.put_model(self.model) #GPU
