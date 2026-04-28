@@ -1,0 +1,40 @@
+diff --git a/1/train_agent.py b/1/train_agent.py
+index 102e269..4292d03 100644
+--- a/1/train_agent.py
++++ b/1/train_agent.py
+@@ -179,7 +179,7 @@ if __name__ == "__main__":
+                 target_kl=0.015, # KL constraint: early stop policy update (target_kl)
+                 policy_kwargs=custom_arch, 
+                 tensorboard_log="./tensorboard/tensorboard_logs/",
+-                device="cpu")
++                device="cuda")
+     print("Training begins...")
+     model.learn(total_timesteps=500000, tb_log_name="ppo_force_real", callback=WandbCallback())
+     model.save("models/ppo_force_real")
+diff --git a/wandb/debug-internal.log b/wandb/debug-internal.log
+index 7858c47..bb9828c 120000
+--- a/wandb/debug-internal.log
++++ b/wandb/debug-internal.log
+@@ -1 +1 @@
+-run-20260418_164300-m4yxr4lv/logs/debug-internal.log
+\ No newline at end of file
++run-20260429_001027-68n0xaj2/logs/debug-internal.log
+\ No newline at end of file
+diff --git a/wandb/debug.log b/wandb/debug.log
+index fba54f5..4412385 120000
+--- a/wandb/debug.log
++++ b/wandb/debug.log
+@@ -1 +1 @@
+-run-20260418_164300-m4yxr4lv/logs/debug.log
+\ No newline at end of file
++run-20260429_001027-68n0xaj2/logs/debug.log
+\ No newline at end of file
+diff --git a/wandb/latest-run b/wandb/latest-run
+index a0b26eb..051bb03 120000
+--- a/wandb/latest-run
++++ b/wandb/latest-run
+@@ -1 +1 @@
+-run-20260418_164300-m4yxr4lv
+\ No newline at end of file
++run-20260429_001027-68n0xaj2
+\ No newline at end of file

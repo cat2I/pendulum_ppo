@@ -1,0 +1,40 @@
+{
+  "os": "Linux-6.17.0-22-generic-x86_64-with-glibc2.39",
+  "python": "CPython 3.12.3",
+  "startedAt": "2026-04-28T17:10:27.107605Z",
+  "program": "/home/cat21/Documents/projects/pendulum/pendulum_ppo/1/train_agent.py",
+  "codePath": "1/train_agent.py",
+  "codePathLocal": "1/train_agent.py",
+  "git": {
+    "remote": "https://github.com/cat2I/simulation-code.git",
+    "commit": "80e6db4586d5ff0800a5b02fa39c7dc99ab0e2ca"
+  },
+  "email": "minh.na226865@sis.hust.edu.vn",
+  "root": "/home/cat21/Documents/projects/pendulum/pendulum_ppo",
+  "host": "cat21-IdeaPad-Pro-5-16IRH8",
+  "executable": "/home/cat21/mujoco_env/bin/python",
+  "cpu_count": 14,
+  "cpu_count_logical": 20,
+  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "196244299776",
+      "used": "53511192576"
+    }
+  },
+  "memory": {
+    "total": "16490962944"
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+      "memoryTotal": "6439305216",
+      "cudaCores": 2560,
+      "architecture": "Ada",
+      "uuid": "GPU-c214715e-1adb-4d58-4792-06a1c0f4d7ef"
+    }
+  ],
+  "cudaVersion": "13.1",
+  "writerId": "5scpv3kznbola18knoy0oxngopsfuoc5"
+}
