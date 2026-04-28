@@ -1,0 +1,6 @@
+__pycache__/
+*.log
+*.zip
+models/
+tensorboard_logs/
+wandb/

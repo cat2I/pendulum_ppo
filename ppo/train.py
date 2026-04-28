@@ -157,7 +157,7 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
 if __name__ == "__main__":
     # 1. WandB
     run = wandb.init(
-        project="CartPole-Mujoco-Lab",
+        project="pendulum-ppo",
         config={
             "total_timesteps": 500000,
             "learning_rate": 3e-4,
