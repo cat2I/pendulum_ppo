@@ -2,7 +2,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecNormalize
 import os
 import time
-from ppo.train import CartPoleSwingUpEnv
+from train import CartPoleSwingUpEnv
 
 def main():
     env = CartPoleSwingUpEnv(render_mode="human")

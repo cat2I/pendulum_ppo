@@ -4,3 +4,4 @@ __pycache__/
 models/
 tensorboard_logs/
 wandb/
+.vscode/
