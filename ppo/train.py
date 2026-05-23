@@ -41,7 +41,7 @@ class CartPoleSwingUpEnv(gym.Env):
         super().reset(seed=seed)
         mujoco.mj_resetData(self.model, self.data)
 
-        #initial state
+        # initial state
         self.data.qpos[0] = 0.0  
         self.data.qpos[1] = self.np_random.uniform(-0.1, 0.1) 
         self.data.qvel[:] = 0.0
@@ -51,15 +51,25 @@ class CartPoleSwingUpEnv(gym.Env):
         jnt_cart_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, "cart_prismatic")
         jnt_pole_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, "pole_continuous")
 
-        # mass randomization (+/- 15%)
+        # initial values from xml
+        # Mass randomization
         self.model.body_mass[body_pole_id] = 0.174 * self.np_random.uniform(0.95, 1.05)
-        # friction, damping, armature randomization for cart
-        self.model.dof_damping[jnt_cart_id] = self.np_random.uniform(0.2, 0.4)
-        self.model.dof_frictionloss[jnt_cart_id] = self.np_random.uniform(0.15, 0.3)
-        self.model.dof_armature[jnt_cart_id] = self.np_random.uniform(0.15, 0.3) 
-        # friction, damping randomization for pole
-        self.model.dof_damping[jnt_pole_id] = self.np_random.uniform(0.005, 0.02)
-        self.model.dof_frictionloss[jnt_pole_id] = self.np_random.uniform(0.005, 0.02)
+        
+        # prismatic joint
+        nom_cart_damping  = 0.2   
+        nom_cart_friction = 0.2   
+        nom_cart_armature = 0.3   
+        # revolute joint
+        nom_pole_damping  = 0.01  
+        nom_pole_friction = 0.01  
+
+        # Random +/- 20% 
+        self.model.dof_damping[jnt_cart_id]      = nom_cart_damping  * self.np_random.uniform(0.8, 1.2)
+        self.model.dof_frictionloss[jnt_cart_id] = nom_cart_friction * self.np_random.uniform(0.8, 1.2)
+        self.model.dof_armature[jnt_cart_id]     = nom_cart_armature * self.np_random.uniform(0.8, 1.2) 
+        
+        self.model.dof_damping[jnt_pole_id]      = nom_pole_damping  * self.np_random.uniform(0.8, 1.2)
+        self.model.dof_frictionloss[jnt_pole_id] = nom_pole_friction * self.np_random.uniform(0.8, 1.2)
 
         # force scale randomization 
         self.force_scale = 60.0 * self.np_random.uniform(0.85, 1.15)

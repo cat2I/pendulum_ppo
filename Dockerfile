@@ -1,10 +1,10 @@
 # Base image
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # OS dependencies for MuJoCo rendering
 RUN apt-get update && apt-get install -y \
     build-essential \
-    libgl1-mesa-glx \
+    libgl1 \
     libosmesa6 \
     && rm -rf /var/lib/apt/lists/*
 

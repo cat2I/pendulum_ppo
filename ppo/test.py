@@ -27,15 +27,21 @@ def main():
         # Infinite loop: Runs until user presses Ctrl+C
         while True:
             action, _states = model.predict(obs, deterministic=True)
-            
             obs, reward, dones, info = vec_env.step(action)
             
             time.sleep(0.01) 
-
-            # Auto-reset on crash or timeout, but keeps window open
+            # Check if episode ended
             if dones[0]:
-                print("Episode finished. Restarting...")
-                time.sleep(1)
+                # Extract truncated flag from info dict; default False
+                is_truncated = info[0].get("TimeLimit.truncated", False)
+                
+                if is_truncated:
+                    print("Truncated")
+                else:
+                    print("Terminated")
+                    
+                # stopping 1 sec before starting new episode
+                time.sleep(1) 
                 
     except KeyboardInterrupt:
         print("Stopped by user.")

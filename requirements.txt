@@ -1,0 +1,6 @@
+stable-baselines3==2.7.1
+gymnasium[mujoco]==1.2.3
+torch==2.10.0
+numpy==2.4.2
+wandb==0.26.0
+tensorboard==2.20.0
