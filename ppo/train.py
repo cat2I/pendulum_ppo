@@ -175,13 +175,14 @@ if __name__ == "__main__":
         
         run = wandb.init(
             project="pendulum-ppo-mlp", 
-            group="SB3_Baseline",       
-            name=f"sb3_seed_{current_seed}",
+            group="SB3_Stack1",       
+            name=f"sb3_stack1_seed_{current_seed}",
             config={
                 "total_timesteps": TOTAL_TIMESTEPS,
                 "learning_rate": 3e-4,
                 "architecture": "128x128",
-                "seed": current_seed
+                "seed": current_seed,
+                "n_stack": 1  # log stack size for future reference
             },
             sync_tensorboard=True,  
             monitor_gym=False,       
@@ -195,7 +196,7 @@ if __name__ == "__main__":
         # env setup
         vec_env = DummyVecEnv([lambda: Monitor(CartPoleSwingUpEnv(render_mode="none"))])
         vec_norm = VecNormalize(vec_env, norm_obs=True, norm_reward=True, clip_obs=10.)
-        vec_env = VecFrameStack(vec_norm, n_stack=8) 
+        vec_env = VecFrameStack(vec_norm, n_stack=1) 
         vec_env.seed(current_seed) 
 
         custom_arch = dict(activation_fn=nn.Tanh, net_arch=dict(pi=[128, 128], vf=[128, 128])) 
@@ -210,14 +211,14 @@ if __name__ == "__main__":
         
         # pure training, tracking via wandb only
         model.learn(total_timesteps=TOTAL_TIMESTEPS, 
-                    tb_log_name=f"ppo_sb3_seed_{current_seed}", 
+                    tb_log_name=f"ppo_sb3_stack1_seed_{current_seed}", 
                     callback=WandbCallback())
         
         # force final state checkpointing
         os.makedirs("models", exist_ok=True)
         os.makedirs("vec", exist_ok=True)
-        model.save(f"models/ppo_force_real_seed_{current_seed}")
-        vec_norm.save(f"vec/vec_normalize_seed_{current_seed}.pkl")
+        model.save(f"models/stack 1/ppo_force_real_stack1_seed_{current_seed}")
+        vec_norm.save(f"vec/stack 1/vec_normalize_stack1_seed_{current_seed}.pkl")
         
         run.finish() 
 

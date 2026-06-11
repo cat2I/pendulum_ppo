@@ -10,7 +10,7 @@ from train import CartPoleSwingUpEnv
 # read champion seed from file
 def get_champion_seed():
     try:
-        with open("test_results/champion_seed.txt", "r") as f:
+        with open("test_results/stack 1/champion_seed.txt", "r") as f:
             return int(f.read().strip())
     except FileNotFoundError:
         return 40
@@ -19,7 +19,7 @@ CHAMPION_SEED = get_champion_seed()
 NUM_EPISODES = 20 
 
 def save_champion_results(episode_num, history_theta, history_action, history_x, swing_up, overshoot, jitter, outcome):
-    result_dir = f"test_results/champion_seed_{CHAMPION_SEED}"
+    result_dir = f"test_results/stack 1/champion_seed_{CHAMPION_SEED}"
     os.makedirs(result_dir, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     base_filename = f"{result_dir}/Ep{episode_num}_{outcome}_{timestamp}"
@@ -44,15 +44,15 @@ def save_champion_results(episode_num, history_theta, history_action, history_x,
     plt.close(fig)
 
 def main():
-    model_path = f"models/ppo_force_real_seed_{CHAMPION_SEED}.zip"
-    stats_path = f"vec/vec_normalize_seed_{CHAMPION_SEED}.pkl"
+    model_path = f"models/stack 1/ppo_force_real_stack1_seed_{CHAMPION_SEED}.zip"
+    stats_path = f"vec/stack 1/vec_normalize_stack1_seed_{CHAMPION_SEED}.pkl"
 
     raw_env = CartPoleSwingUpEnv(render_mode="none")
     vec_env = DummyVecEnv([lambda: raw_env])
     vec_env = VecNormalize.load(stats_path, vec_env)
     vec_env.training = False
     vec_env.norm_reward = False
-    vec_env = VecFrameStack(vec_env, n_stack=8)
+    vec_env = VecFrameStack(vec_env, n_stack=1)
 
     model = PPO.load(model_path, env=vec_env, device="cpu")
     

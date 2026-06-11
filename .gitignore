@@ -6,3 +6,4 @@ tensorboard_logs/
 wandb/
 .vscode/
 test_results/
+vec/

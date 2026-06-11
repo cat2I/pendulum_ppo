@@ -11,7 +11,7 @@ SEEDS = [10, 20, 30, 40, 50]
 NUM_EPISODES_PER_SEED = 50 
 
 def save_episode_results(seed, episode_num, history_theta, history_action, history_x, swing_up_step, overshoot, jitter_score):
-    result_dir = f"test_results/sb3_data_seed_{seed}"
+    result_dir = f"test_results/stack 1/sb3_data_seed_{seed}"
     os.makedirs(result_dir, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     base_filename = f"{result_dir}/SB3_Stack8_Ep{episode_num}_{timestamp}"
@@ -50,8 +50,8 @@ def main():
 
     for seed in SEEDS:
         # target final models explicitly
-        model_path = f"models/ppo_force_real_seed_{seed}.zip"
-        stats_path = f"vec/vec_normalize_seed_{seed}.pkl"
+        model_path = f"models/stack 1/ppo_force_real_stack1_seed_{seed}.zip"
+        stats_path = f"vec/stack 1/vec_normalize_stack1_seed_{seed}.pkl"
 
         if not os.path.exists(model_path) or not os.path.exists(stats_path):
             continue
@@ -61,7 +61,7 @@ def main():
         vec_env = VecNormalize.load(stats_path, vec_env)
         vec_env.training = False
         vec_env.norm_reward = False
-        vec_env = VecFrameStack(vec_env, n_stack=8)
+        vec_env = VecFrameStack(vec_env, n_stack=1)
 
         # [ ... trong hàm main() ... ]
         model = PPO.load(model_path, env=vec_env, device="cpu")

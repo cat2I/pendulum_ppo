@@ -2,7 +2,7 @@ import os
 import glob
 import numpy as np
 
-BASE_DIR = "test_results"
+BASE_DIR = "test_results/stack 1"
 SEEDS = [10, 20, 30, 40, 50]
 MAX_STEPS = 1000
 
@@ -64,7 +64,7 @@ def main():
 
     report.append("="*65)
     report.append(f"\nCHAMPION SEED: {best_seed}")
-    report.append(f"-> Use 'models/ppo_force_real_seed_{best_seed}.zip' for testing.")
+    report.append(f"-> Use 'models/stack 1/ppo_force_real_stack1_seed_{best_seed}.zip' for testing.")
 
     full_report = "\n".join(report)
     print(full_report)

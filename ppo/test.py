@@ -6,7 +6,7 @@ from train import CartPoleSwingUpEnv
 
 # mode selection flag
 USE_SPECIFIC_SEED = True #False for random seed 
-SEED = 20 
+SEED = 40 
 
 def main():
     env = CartPoleSwingUpEnv(render_mode="human")
@@ -14,8 +14,8 @@ def main():
 
     # dynamic path resolution
     if USE_SPECIFIC_SEED:
-        stats_path = f"vec/vec_normalize_seed_{SEED}.pkl"
-        model_path = f"models/ppo_force_real_seed_{SEED}.zip"
+        stats_path = f"vec/stack 1/vec_normalize_stack1_seed_{SEED}.pkl"
+        model_path = f"models/stack 1/ppo_force_real_stack1_seed_{SEED}.zip"
     else:
         stats_path = "vec/vec_normalize.pkl"
         model_path = "models/ppo_force_real.zip"
@@ -23,7 +23,7 @@ def main():
     vec_env = VecNormalize.load(stats_path, vec_env)
     vec_env.training = False 
     vec_env.norm_reward = False
-    vec_env = VecFrameStack(vec_env, n_stack=8)
+    vec_env = VecFrameStack(vec_env, n_stack=1)
 
     model = PPO.load(model_path, env=vec_env)
     obs = vec_env.reset()
