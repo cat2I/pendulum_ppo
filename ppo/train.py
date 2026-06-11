@@ -159,43 +159,66 @@ class CartPoleSwingUpEnv(gym.Env):
 
 from typing import Callable
 
-# Linear schedule: progress from 1.0 to 0.0 (LR schedule)
 def linear_schedule(initial_value: float) -> Callable[[float], float]:
     def func(progress_remaining: float) -> float:
         return progress_remaining * initial_value
     return func
+
 if __name__ == "__main__":
-    # 1. WandB
-    run = wandb.init(
-        project="pendulum-ppo",
-        config={
-            "total_timesteps": 500000,
-            "learning_rate": 3e-4,
-            "architecture": "128x128",
-        },
-        sync_tensorboard=True,  # sync with Tensorboard 
-        monitor_gym=False,       # Video
-        save_code=True,         # Code version storing
-    )
-    
-
     from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecNormalize
-    #Vectorize -> Normalize -> Stack
-    vec_env = DummyVecEnv([lambda: Monitor(CartPoleSwingUpEnv(render_mode="none"))])
-    vec_norm = VecNormalize(vec_env, norm_obs=True, norm_reward=True, clip_obs=10.)
-    vec_env = VecFrameStack(vec_norm, n_stack=8) # Frame stack after normalization (history of 8 frames)
+    
+    TOTAL_TIMESTEPS = 4096000 
+    seeds = [10, 20, 30, 40, 50]
 
-    custom_arch = dict(activation_fn=nn.Tanh, net_arch=dict(pi=[128, 128], vf=[128, 128])) #Actor-Critic
+    for current_seed in seeds:
+        print(f"\n========== STARTING SB3 RUN WITH SEED: {current_seed} ==========\n")
+        
+        run = wandb.init(
+            project="pendulum-ppo-mlp", 
+            group="SB3_Baseline",       
+            name=f"sb3_seed_{current_seed}",
+            config={
+                "total_timesteps": TOTAL_TIMESTEPS,
+                "learning_rate": 3e-4,
+                "architecture": "128x128",
+                "seed": current_seed
+            },
+            sync_tensorboard=True,  
+            monitor_gym=False,       
+            save_code=True,         
+            reinit=True                 
+        )
+        
+        wandb.define_metric("global_step")
+        wandb.define_metric("*", step_metric="global_step")
 
-    model = PPO("MlpPolicy", vec_env, verbose=0,
-                learning_rate=linear_schedule(3e-4), # mountain climbing
-                target_kl=0.015, # KL constraint: early stop policy update (target_kl)
-                policy_kwargs=custom_arch, 
-                tensorboard_log="./tensorboard/tensorboard_logs/",
-                device="cuda")
-    print("Training begins...")
-    model.learn(total_timesteps=500000, tb_log_name="ppo_force_real", callback=WandbCallback())
-    model.save("models/ppo_force_real")
-    vec_norm.save("vec/vec_normalize.pkl")# Save VecNormalize statistics
-    run.finish() #for wandb
-    print("Done!")
+        # env setup
+        vec_env = DummyVecEnv([lambda: Monitor(CartPoleSwingUpEnv(render_mode="none"))])
+        vec_norm = VecNormalize(vec_env, norm_obs=True, norm_reward=True, clip_obs=10.)
+        vec_env = VecFrameStack(vec_norm, n_stack=8) 
+        vec_env.seed(current_seed) 
+
+        custom_arch = dict(activation_fn=nn.Tanh, net_arch=dict(pi=[128, 128], vf=[128, 128])) 
+
+        model = PPO("MlpPolicy", vec_env, verbose=0,
+                    learning_rate=linear_schedule(3e-4), 
+                    target_kl=0.015, 
+                    seed=current_seed,  
+                    policy_kwargs=custom_arch, 
+                    tensorboard_log="./tensorboard/tensorboard_logs/",
+                    device="cuda")
+        
+        # pure training, tracking via wandb only
+        model.learn(total_timesteps=TOTAL_TIMESTEPS, 
+                    tb_log_name=f"ppo_sb3_seed_{current_seed}", 
+                    callback=WandbCallback())
+        
+        # force final state checkpointing
+        os.makedirs("models", exist_ok=True)
+        os.makedirs("vec", exist_ok=True)
+        model.save(f"models/ppo_force_real_seed_{current_seed}")
+        vec_norm.save(f"vec/vec_normalize_seed_{current_seed}.pkl")
+        
+        run.finish() 
+
+    print("All SB3 benchmarks completed!")
