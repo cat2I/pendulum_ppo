@@ -1,0 +1,26 @@
+<mujoco model="625">
+  <compiler angle="radian"/>
+
+  <asset>
+    <mesh name="worldframe" content_type="model/stl" file="worldframe.STL"/>
+    <mesh name="cart" content_type="model/stl" file="cart.STL"/>
+    <mesh name="pole" content_type="model/stl" file="pole.STL"/>
+  </asset>
+
+  <worldbody>
+    <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" mesh="worldframe"/>
+    <body name="cart" quat="0.499998 -0.5 -0.500002 0.5">
+      <inertial pos="0 -0.0115731 0" quat="0.5 0.5 0.5 0.5" mass="0.4104" diaginertia="0.00045213 0.00040602 0.00015242"/>
+      <joint name="cart_prismatic" pos="0 0 0" axis="0 0 -1" type="slide" range="-0.45 0.45" damping="0.2" armature="0.3" frictionloss="0.2"/>
+      <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" contype="0" conaffinity="0" mesh="cart"/>
+      <body name="pole" pos="0.036 -0.02 0" quat="0.499998 0.5 0.500002 0.5">
+        <inertial pos="0.110629 7.64758e-07 0.00747893" quat="0.533808 0.463732 0.463732 0.533811" mass="0.174" diaginertia="0.00174880 0.00167606 0.00007414"/>
+        <joint name="pole_continuous" pos="0 0 0" axis="0 0 1" damping="0.01" frictionloss="0.01"/>
+        <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" contype="0" conaffinity="0" mesh="pole"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+     <velocity joint="cart_prismatic" name="cart_velocity" kv="100" ctrllimited="true" ctrlrange="-1.5 1.5"/>
+</actuator>
+</mujoco>

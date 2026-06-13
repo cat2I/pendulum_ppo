@@ -5,7 +5,7 @@ import time
 from train import CartPoleSwingUpEnv
 
 # mode selection flag
-USE_SPECIFIC_SEED = True #False for random seed 
+USE_SPECIFIC_SEED = False #False for random seed 
 SEED = 40 
 
 def main():
@@ -17,13 +17,15 @@ def main():
         stats_path = f"vec/stack 1/vec_normalize_stack1_seed_{SEED}.pkl"
         model_path = f"models/stack 1/ppo_force_real_stack1_seed_{SEED}.zip"
     else:
-        stats_path = "vec/vec_normalize.pkl"
-        model_path = "models/ppo_force_real.zip"
+        #stats_path = "vec/vec_normalize.pkl"
+        #model_path = "models/ppo_force_real.zip"
+        stats_path = "vec/env/vec_normalize_stack8_no_bonus.pkl"
+        model_path = "models/env/ppo_stack8_no_bonus.zip"
 
     vec_env = VecNormalize.load(stats_path, vec_env)
     vec_env.training = False 
     vec_env.norm_reward = False
-    vec_env = VecFrameStack(vec_env, n_stack=1)
+    vec_env = VecFrameStack(vec_env, n_stack=8) #change framestack
 
     model = PPO.load(model_path, env=vec_env)
     obs = vec_env.reset()

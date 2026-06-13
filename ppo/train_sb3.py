@@ -6,17 +6,17 @@ import mujoco
 import mujoco.viewer
 import torch.nn as nn
 from stable_baselines3 import PPO
-from stable_baselines3.common.monitor import Monitor
 import os
 os.environ["WANDB_SILENT"] = "true"
 import wandb
 from wandb.integration.sb3 import WandbCallback
+from typing import Callable
 
 class CartPoleSwingUpEnv(gym.Env):
-    def __init__(self, render_mode="none"):
+    def __init__(self, use_bonus_shaping=True, render_mode="none"):
         super(CartPoleSwingUpEnv, self).__init__()
         
-        self.model = mujoco.MjModel.from_xml_path("m.625/urdf/mjmodel.xml") #CPU
+        self.model = mujoco.MjModel.from_xml_path("m.625/urdf/mjmodel_vel.xml") #CPU
         self.data = mujoco.MjData(self.model) 
 
         #self.mjx_model = mjx.put_model(self.model) #GPU
@@ -34,8 +34,9 @@ class CartPoleSwingUpEnv(gym.Env):
         )
         self.max_steps = 1000 #step limit per episode
         self.current_step = 0 
-        self.force_scale = 60.0 
-        self.actual_force = 0.0
+        self.current_target_vel = 0.0    # Lưu vận tốc mục tiêu hiện tại gửi xuống MCU
+        self.delta_v_scale = 0.15        # Mạng max action=1.0 -> Vận tốc thay đổi tối đa 0.15 m/s mỗi step
+        self.max_vel_physical = 1.2
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -71,13 +72,12 @@ class CartPoleSwingUpEnv(gym.Env):
         self.model.dof_damping[jnt_pole_id]      = nom_pole_damping  * self.np_random.uniform(0.8, 1.2)
         self.model.dof_frictionloss[jnt_pole_id] = nom_pole_friction * self.np_random.uniform(0.8, 1.2)
 
-        # force scale randomization 
-        self.force_scale = 60.0 * self.np_random.uniform(0.85, 1.15)
+        # Randomize nhẹ độ nhạy của action để model thích nghi tốt hơn với thực tế
+        self.delta_v_scale = 0.15 * self.np_random.uniform(0.9, 1.1) 
+        self.current_target_vel = 0.0    
 
-        # reset logic memory
-        self.actual_force = 0.0 # reset force filter memory
         self.current_step = 0
-        self.prev_action = 0.0  # reset action history
+        self.prev_action = 0.0 
 
         # end of randomness
         mujoco.mj_forward(self.model, self.data)
@@ -92,11 +92,18 @@ class CartPoleSwingUpEnv(gym.Env):
                                     self.action_space.low[0], 
                                     self.action_space.high[0]))
 
-        # randomized force scale
-        target_force = action_value * self.force_scale
-        alpha = 0.15 #(0.1-0.3)
-        self.actual_force = (1.0 - alpha)*self.actual_force + alpha*target_force # EMA implementation
-        self.data.ctrl[0] = float(self.actual_force)
+        # --- LOGIC DELTA VELOCITY (ACTION WRAPPER) ---
+        # 1. Tính toán lượng thay đổi vận tốc mong muốn
+        delta_v = action_value * self.delta_v_scale
+        
+        # 2. Cộng dồn vào vận tốc mục tiêu hiện tại
+        self.current_target_vel += delta_v
+        
+        # 3. Kẹp (Clip) vận tốc lại để không vượt quá ngưỡng chịu đựng của cơ khí
+        self.current_target_vel = np.clip(self.current_target_vel, -self.max_vel_physical, self.max_vel_physical)
+
+        # 4. Gửi vận tốc mục tiêu vào MuJoCo
+        self.data.ctrl[0] = float(self.current_target_vel)
 
         #Frequency synchronization
         for _ in range(5):
@@ -164,7 +171,7 @@ class CartPoleSwingUpEnv(gym.Env):
         if self.render_mode == "human":
             self._render_frame()
         return obs, reward, terminated, truncated, info
-
+    
     def _get_obs(self):
         # sensor noise injection
         x = self.data.qpos[0] + self.np_random.normal(0, 0.001)
@@ -182,32 +189,36 @@ class CartPoleSwingUpEnv(gym.Env):
         if self.viewer is not None:
             self.viewer.close()
 
-from typing import Callable
-
+# Linear schedule: progress from 1.0 to 0.0 (LR schedule)
 def linear_schedule(initial_value: float) -> Callable[[float], float]:
     def func(progress_remaining: float) -> float:
         return progress_remaining * initial_value
     return func
 
 if __name__ == "__main__":
+    from stable_baselines3.common.monitor import Monitor
     from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecNormalize
     
     TOTAL_TIMESTEPS = 4096000 
-    seeds = [10, 20, 30, 40, 50]
+    # SỬA LỖI 1: Chuyển thành dạng List (Mảng) để vòng lặp for có thể chạy
+    fixed_seeds = [42] 
+    
+    # SỬA LỖI 2: Khai báo biến USE_BONUS_SHAPING bị thiếu
+    USE_BONUS_SHAPING = True 
 
-    for current_seed in seeds:
+    for current_seed in fixed_seeds:
         print(f"\n========== STARTING SB3 RUN WITH SEED: {current_seed} ==========\n")
-        
+    
         run = wandb.init(
-            project="pendulum-ppo-mlp", 
-            group="SB3_Stack1",       
-            name=f"sb3_stack1_seed_{current_seed}",
+            project="pendulum-ppo", 
+            name=f"vel_seed{current_seed}",
             config={
                 "total_timesteps": TOTAL_TIMESTEPS,
                 "learning_rate": 3e-4,
                 "architecture": "128x128",
                 "seed": current_seed,
-                "n_stack": 1  # log stack size for future reference
+                "n_stack": 8,
+                "bonus_shaping": USE_BONUS_SHAPING
             },
             sync_tensorboard=True,  
             monitor_gym=False,       
@@ -219,9 +230,11 @@ if __name__ == "__main__":
         wandb.define_metric("*", step_metric="global_step")
 
         # env setup
-        vec_env = DummyVecEnv([lambda: Monitor(CartPoleSwingUpEnv(render_mode="none"))])
+        vec_env = DummyVecEnv([lambda: Monitor(CartPoleSwingUpEnv(use_bonus_shaping=USE_BONUS_SHAPING, render_mode="none"))])
         vec_norm = VecNormalize(vec_env, norm_obs=True, norm_reward=True, clip_obs=10.)
-        vec_env = VecFrameStack(vec_norm, n_stack=1) 
+        vec_env = VecFrameStack(vec_norm, n_stack=8) 
+        
+        # Hàm seed() của VecEnv đôi khi cần một integer duy nhất
         vec_env.seed(current_seed) 
 
         custom_arch = dict(activation_fn=nn.Tanh, net_arch=dict(pi=[128, 128], vf=[128, 128])) 
@@ -234,17 +247,17 @@ if __name__ == "__main__":
                     tensorboard_log="./tensorboard/tensorboard_logs/",
                     device="cuda")
         
-        # pure training, tracking via wandb only
         model.learn(total_timesteps=TOTAL_TIMESTEPS, 
-                    tb_log_name=f"ppo_sb3_stack1_seed_{current_seed}", 
+                    tb_log_name=f"ppo_vel_{current_seed}", 
                     callback=WandbCallback())
         
-        # force final state checkpointing
-        os.makedirs("models/stack 1", exist_ok=True)
-        os.makedirs("vec/stack 1", exist_ok=True)
-        model.save(f"models/stack 1/ppo_force_real_stack1_seed_{current_seed}")
-        vec_norm.save(f"vec/stack 1/vec_normalize_stack1_seed_{current_seed}.pkl")
+        save_dir = "models/vel"
+        vec_dir = "vec/vel"
+        os.makedirs(save_dir, exist_ok=True)
+        os.makedirs(vec_dir, exist_ok=True)
+        
+        model.save(f"{save_dir}/ppo_vel_{current_seed}")
+        vec_norm.save(f"{vec_dir}/vec_normalize_vel_{current_seed}.pkl")
         
         run.finish() 
-
-    print("All SB3 benchmarks completed!")
+        print(f"Done with seed {current_seed} !")
