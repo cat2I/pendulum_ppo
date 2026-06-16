@@ -119,7 +119,7 @@ class CartPoleSwingUpEnv(gym.Env):
         self.prev_action = action_value  # Update for next step
         
         # base static penalties
-        penalty_action = 0.005 * (action_value**2) #force pen
+        penalty_action = 0.002 * (action_value**2) #force pen
         penalty_vth = 0.001 * (pole_vel**2) #pole vel pen
 
         # smooth reward shaping: Gaussian/exponential
@@ -141,7 +141,7 @@ class CartPoleSwingUpEnv(gym.Env):
         
         # 4. Phạt Rung giật Hành động Động (Dynamic Jitter Penalty)
         # Càng lên cao, ép AI phải giữ mượt motor hơn (từ 0.05 lên tới ~0.15)
-        dynamic_action_rate_factor = 0.05 + 0.1 * (smooth_bonus / 2.0)
+        dynamic_action_rate_factor = 0.02 + 0.1 * (smooth_bonus / 2.0)
         penalty_action_rate = dynamic_action_rate_factor * (action_diff**2)
         
         # 5. Phạt lệch tâm Động

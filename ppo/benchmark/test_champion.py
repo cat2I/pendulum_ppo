@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecNormalize
-from train import CartPoleSwingUpEnv
+from ppo.benchmark.train import CartPoleSwingUpEnv
 
 # read champion seed from file
 def get_champion_seed():
